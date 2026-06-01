@@ -1,0 +1,19 @@
+INTERESTS = [
+    "gaudi",
+    "architecture",
+    "history",
+    "religion",
+    "modern_art",
+    "classical_art",
+    "culture",
+    "markets",
+    "food",
+    "nature",
+    "parks",
+    "photography",
+    "nightlife",
+    "shopping",
+    "music",
+    "theatre",
+    "hidden_gems"
+]
