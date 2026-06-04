@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 
 class POI(BaseModel):
-
     id: str
     name: str
     description: Optional[str] = None
@@ -55,3 +54,26 @@ class POI(BaseModel):
     google_rating: Optional[float] = Field(None, ge=0.0, le=5.0)
     review_count: Optional[int] = None
     local_favourite: bool = False    # hidden gem vs tourist trap
+
+class POISentiment(BaseModel):
+    poi_name: str
+    sentiment: Literal["very_positive", "positive", "neutral", "negative", "very_negative"]
+    reason: str
+
+class TripSentiment(BaseModel):
+    overall_sentiment: Literal["very_positive", "positive", "neutral", "negative", "very_negative"]
+    overall_score: float = Field(ge=0.0, le=10.0)
+    summary: str
+    highlights: List[str]
+    pain_points: List[str]
+    would_recommend: bool
+    would_return: bool
+    poi_sentiments: List[POISentiment]
+    emotional_arc: Literal[
+        "consistently_positive",
+        "started_strong_tired_out",
+        "slow_start_great_finish",
+        "mixed_throughout",
+        "mostly_negative"
+    ]
+    suggested_improvements: List[str]

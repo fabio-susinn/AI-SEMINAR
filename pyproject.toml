@@ -10,4 +10,5 @@ dependencies = [
     "matplotlib>=3.10.9",
     "osmnx>=2.1.0",
     "pydantic>=2.13.4",
+    "uuid>=1.30",
 ]

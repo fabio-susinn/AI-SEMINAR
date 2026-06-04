@@ -1,0 +1,12 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+  background: #e8e6e0;
+}
+
+code, .mono { font-family: 'DM Mono', monospace; }
+button { font-family: 'DM Sans', sans-serif; cursor: pointer; }

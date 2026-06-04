@@ -1,7 +1,11 @@
-from pydantic import BaseModel
+import uuid
+
+from pydantic import BaseModel, Field
 from typing import List, Literal
 
 class TouristProfile(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    awareness_set: List[str] = []
 
     age: int
     nationality: str
@@ -18,7 +22,6 @@ class TouristProfile(BaseModel):
 
     daily_budget_eur: float
 
-    # Mobility
     mobility_mode: Literal[
         "walking",
         "bike",
