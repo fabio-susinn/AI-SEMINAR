@@ -65,7 +65,7 @@ export default function GraphOverlay({ map, nodes, edges, selectedId, onSelectNo
   return (
     <canvas
       ref={canvasRef}
-      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 400 }}
+      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 399 }}
     />
   );
 }

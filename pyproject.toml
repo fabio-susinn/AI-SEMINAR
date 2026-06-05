@@ -8,6 +8,7 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "lxml>=6.1.1",
     "matplotlib>=3.10.9",
+    "ollama>=0.6.2",
     "osmnx>=2.1.0",
     "pydantic>=2.13.4",
     "uuid>=1.30",

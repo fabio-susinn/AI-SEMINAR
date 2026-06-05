@@ -14,12 +14,7 @@ class TouristProfile(BaseModel):
     travel_with_kids: bool
     travel_with_seniors: bool
 
-    budget_level: Literal[
-        "low",
-        "medium",
-        "high"
-    ]
-
+    budget_level: Literal["low", "medium", "high"]
     daily_budget_eur: float
 
     mobility_mode: Literal[
@@ -30,11 +25,7 @@ class TouristProfile(BaseModel):
         "mixed"
     ]
 
-    walking_tolerance: Literal[
-        "low",
-        "medium",
-        "high"
-    ]
+    walking_tolerance: Literal["low", "medium", "high"]
 
     max_walking_distance_km: float
 

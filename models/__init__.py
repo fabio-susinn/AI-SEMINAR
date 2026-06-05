@@ -1,3 +1,2 @@
 from .Tourist import TouristProfile
-from .Interest  import INTERESTS
-from .POI import POI, POISentiment, TripSentiment
+from .POI import POI, POISentiment, TripSentiment, POITracker
