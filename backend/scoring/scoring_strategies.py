@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
-from models import POI, TouristProfile
+
+from models import TouristProfile, POI
 
 
 class ScoringStrategy(ABC):

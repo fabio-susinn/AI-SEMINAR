@@ -3,7 +3,8 @@ import math
 
 from typing import List
 
-from models import (POI, TouristProfile)
+from models import TouristProfile
+from models import (POI)
 
 def load_pois(filepath: str) -> List[POI]:
     with open(filepath, 'r', encoding='utf-8') as f:

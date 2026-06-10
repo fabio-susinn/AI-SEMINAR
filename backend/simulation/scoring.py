@@ -1,4 +1,4 @@
-from models import POI, TouristProfile
+from models import TouristProfile, POI
 
 
 def match_score(poi: POI, profile: TouristProfile) -> float:

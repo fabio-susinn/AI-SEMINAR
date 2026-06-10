@@ -1,6 +1,6 @@
 import random
 
-from models import TouristProfile, POI, POITracker
+from models import POI, POITracker, TouristProfile
 from .scoring import match_score
 
 from enum import Enum
