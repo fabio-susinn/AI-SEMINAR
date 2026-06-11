@@ -36,6 +36,9 @@ export default function App() {
   const [simResults, setSimResults] = useState(null);
   const [simError, setSimError]     = useState(null);
 
+  // Neighborhood highlighting
+  const [showNeighborhoods, setShowNeighborhoods] = useState(false);
+
   // Selected agent for single-agent view
   const [focusAgentId, setFocusAgentId]       = useState(null);   // null = population view
   const [focusItinerary, setFocusItinerary]   = useState(null);   // fetched from /api/agents/:id/itinerary
@@ -49,6 +52,7 @@ export default function App() {
   // Leaflet layer refs — cleared and redrawn on each relevant state change
   const popLayerRef    = useRef([]);   // population heatmap circles
   const agentLayerRef  = useRef([]);   // single-agent: edges + POI markers + moving dot
+  const neighborhoodLayerRef = useRef(null); // geojson neighborhoods layer
 
   // ── Map init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -63,6 +67,54 @@ export default function App() {
     setMapReady(true);
     return () => { map.remove(); mapRef.current = null; };
   }, []);
+
+  // Load/Toggle neighborhoods layer
+  // Load/Toggle neighborhoods layer
+useEffect(() => {
+  if (!mapRef.current) return;
+  const map = mapRef.current;
+  
+  if (showNeighborhoods) {
+    // Create a custom pane if it doesn't exist yet
+    if (!map.getPane('neighborhoodsPane')) {
+      const pane = map.createPane('neighborhoodsPane');
+      // Set its z-index above the tile layer (200) but below overlayPane (400)
+      pane.style.zIndex = 250; 
+      pane.style.pointerEvents = 'none'; // Allows clicks to pass through if desired, or remove this line to keep it interactive
+    }
+
+    fetch('barris.geojson')
+      .then(r => { if (!r.ok) throw new Error('Failed to fetch neighborhoods'); return r.json(); })
+      .then(geo => {
+        if (neighborhoodLayerRef.current) {
+          try { map.removeLayer(neighborhoodLayerRef.current); } catch(_){}
+          neighborhoodLayerRef.current = null;
+        }
+        neighborhoodLayerRef.current = L.geoJSON(geo, {
+          // ── ADD THE PANE OPTION HERE ──
+          pane: 'neighborhoodsPane',
+          style: (feat) => ({ color:'#2b7edc', weight:1.2, fillColor:'#2b7edc', fillOpacity: 0.08 }),
+          onEachFeature: (feature, layer) => {
+            const name = feature.properties?.name || feature.properties?.NOM || feature.properties?.BARRI || 'Neighborhood';
+            layer.bindTooltip(name, {sticky:true});
+          }
+        }).addTo(map);
+      })
+      .catch(e => { console.warn('Neighborhoods geojson load failed', e); });
+  } else {
+    if (neighborhoodLayerRef.current && map.hasLayer(neighborhoodLayerRef.current)) {
+      map.removeLayer(neighborhoodLayerRef.current);
+      neighborhoodLayerRef.current = null;
+    }
+  }
+  // remove on unmount
+  return () => {
+    if (neighborhoodLayerRef.current && map.hasLayer(neighborhoodLayerRef.current)) {
+      map.removeLayer(neighborhoodLayerRef.current);
+      neighborhoodLayerRef.current = null;
+    }
+  };
+}, [showNeighborhoods, mapReady]);
 
   useEffect(() => {
     if (activeTab === 'map' && mapRef.current)
@@ -359,6 +411,12 @@ export default function App() {
               {simResults && !isAgentMode && <span style={{ color:'#0F6E56' }}> · {simResults.agents.length} agents</span>}
               {isAgentMode && <span style={{ color:'#D97706' }}> · Agent #{focusAgentId}</span>}
               {error && <span style={{ color:'#A32D2D' }}> · {error}</span>}
+
+              {/* Neighborhood toggle */}
+              <label style={{marginLeft:8,fontSize:12,display:'inline-flex',alignItems:'center',gap:6}}>
+                <input type="checkbox" checked={showNeighborhoods} onChange={e=>setShowNeighborhoods(e.target.checked)} />
+                <span style={{color:'#5F5E5A'}}>Highlight neighborhoods</span>
+              </label>
             </div>
 
             {/* Legend */}
