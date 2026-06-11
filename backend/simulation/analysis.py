@@ -68,6 +68,7 @@ def build_itinerary_df(results: list[tuple[TouristAgent, TripSentiment]]) -> pd.
             rows.append({
                 "agent_id":    agent.agent_id,
                 "order":       order,
+                "poi_id":      poi.id,
                 "poi_name":    poi.name,
                 "category":    poi.category,
                 "arrival_h":   round(arrival, 2),

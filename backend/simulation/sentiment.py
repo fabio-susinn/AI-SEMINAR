@@ -8,8 +8,8 @@ import urllib.error
 from .agent import TouristAgent
 from models import TripSentiment
 
-OLLAMA_URL   = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3.2:latest"   # change to whichever model you pulled
+OLLAMA_URL   = "http://barcelona_ollama:11434/api/generate"
+OLLAMA_MODEL = "llama3.1:latest"   # change to whichever model you pulled
 
 SENTIMENT_SCHEMA = """{
   "overall_sentiment": "very_positive"|"positive"|"neutral"|"negative"|"very_negative",
