@@ -110,7 +110,7 @@ class TouristAgent:
         cost               = next_poi.entry_price_eur
         self.money_spent  += cost
         self.fatigue       = min(1.0, self.fatigue + fatigue_inc)
-        gain               = self.strategy.score(self.profile, next_poi)
+        gain               = self.strategy.score(self.profile, next_poi, self.tracker)  # pass tracker for live crowd info
         self.satisfaction += gain
 
         self.visited.append((next_poi, arrival))
@@ -155,7 +155,7 @@ class TouristAgent:
 
         # Score using the agent's assigned strategy, minus a small travel penalty
         scored = [
-            (p, self.strategy.score(self.profile, p) - self._travel_time(p) * 0.1)
+            (p, self.strategy.score(self.profile, p, self.tracker) - self._travel_time(p) * 0.1)
             for p in candidates
         ]
         scores = [max(s, 0.0) for _, s in scored]

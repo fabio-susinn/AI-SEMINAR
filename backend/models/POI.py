@@ -85,6 +85,7 @@ class POIState(BaseModel):
     total_dwell_hours: float = 0.0
     visitor_ids: list[int] = []
     visit_times: list[float] = []
+    live_crowd_level: float = 0.0
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -109,6 +110,18 @@ class POIState(BaseModel):
         self.total_dwell_hours += dwell_hours
         self.visitor_ids.append(agent_id)
         self.visit_times.append(arrival_time)
+        self._update_crowd(arrival_time)
+
+
+    def _update_crowd(self, current_time: float):
+        # count current visitors 
+        active = sum(
+            1 for t in self.visit_times
+            if t <= current_time < t + self.poi.avg_visit_duration_hours
+        )
+
+        self.live_crowd_level = float(active)
+
 
     def to_dict(self) -> dict:
         return {
@@ -141,3 +154,7 @@ class POITracker(BaseModel):
 
     def to_dict(self) -> dict:
         return {pid: s.to_dict() for pid, s in self.states.items()}
+    
+    def get_live_crowd(self, poi_id: str) -> float:
+        state = self.states.get(poi_id)
+        return state.live_crowd_level if state else 0.0
