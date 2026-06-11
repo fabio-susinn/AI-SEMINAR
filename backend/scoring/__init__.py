@@ -1,0 +1,2 @@
+from .scoring_strategies import ScoringStrategy, PopularityBasedStrategy, InterestsBasedStrategy, SustainabilityAwareStrategy
+from .ScoringFactory import ScoringFactory

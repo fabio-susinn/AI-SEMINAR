@@ -2,6 +2,7 @@ import json
 import random
 import pandas as pd
 
+from scoring import ScoringFactory
 from models import (
     POI, POITracker,
     SimulationRequest, SimulationResponse,
@@ -73,10 +74,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def run_simulation(profiles, pois, max_steps=30):
+def run_simulation(profiles, pois, strategy, max_steps=30):
     tracker = POITracker()
     tracker.setup(pois)
-    agents = [TouristAgent(i, p, pois, tracker=tracker) for i, p in enumerate(profiles)]
+    agents = [TouristAgent(i, p, pois, tracker=tracker, strategy=strategy) for i, p in enumerate(profiles)]
 
     for _ in range(max_steps):
         active = [a for a in agents if a.state != AgentState.DONE]
@@ -95,8 +96,9 @@ def simulate(req: SimulationRequest):
         if req.seed is not None:
             random.seed(req.seed)
 
+        strategy = ScoringFactory.get_strategy(req.strategy)
         profiles = generate_profiles(req.agents, seed=req.seed)
-        agents, tracker = run_simulation(profiles, POIS)
+        agents, tracker = run_simulation(profiles, POIS, strategy, max_steps=30 )
 
         poi_states = [s.to_dict() for s in tracker.sorted_by_visits()]
         agent_summaries = [a.summary() for a in agents]

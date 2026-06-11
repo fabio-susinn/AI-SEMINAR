@@ -31,6 +31,7 @@ export default function App() {
   // Simulation
   const [simOpen, setSimOpen]       = useState(false);
   const [simParams, setSimParams]   = useState({ agents:10, seed:42, workers:3, no_sentiment:false });
+  const [simStrategy, setSimStrategy] = useState('popularity'); // <-- ADDED THIS LINE
   const [simRunning, setSimRunning] = useState(false);
   const [simResults, setSimResults] = useState(null);
   const [simError, setSimError]     = useState(null);
@@ -289,7 +290,7 @@ export default function App() {
     try {
       const res = await fetch('/api/simulate', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(simParams),
+        body:JSON.stringify({ ...simParams, strategy: simStrategy}),
       });
       if (!res.ok) { const e = await res.json(); throw new Error(e.detail||'Failed'); }
       setSimResults(await res.json());
@@ -378,6 +379,12 @@ export default function App() {
                 <label style={labelSt}>Agents</label>
                 <input type="number" min={1} max={200} value={simParams.agents} style={inputSt}
                   onChange={e=>setSimParams(p=>({...p,agents:parseInt(e.target.value)||1}))} />
+                <label style={labelSt}>Recommender Mode</label>
+                <select value={simStrategy} onChange={e=>setSimStrategy(e.target.value)} style={inputSt}>
+                  <option value="popularity">Popularity</option>
+                  <option value="interests">Interests</option>
+                  <option value="sustainability">Sustainability</option>
+                </select>
                 <label style={labelSt}>Seed <span style={{fontWeight:400,color:'#888780'}}>(blank = random)</span></label>
                 <input type="number" value={simParams.seed??''} style={inputSt}
                   onChange={e=>setSimParams(p=>({...p,seed:e.target.value?parseInt(e.target.value):null}))} />

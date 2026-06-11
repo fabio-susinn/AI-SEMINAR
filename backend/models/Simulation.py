@@ -1,11 +1,12 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Literal
 
 class SimulationRequest(BaseModel):
-    agents:       int  = 10
-    seed:         int  | None = None
-    workers:      int  = 5
-    no_sentiment: bool = False
+    agents:       int     = 10
+    seed:         int | None = None
+    workers:      int     = 5
+    no_sentiment: bool    = False
+    strategy:     Literal["popularity", "interests", "sustainability"] = "interests"
 
 
 class SimulationResponse(BaseModel):
