@@ -111,6 +111,12 @@ class TouristAgent:
         self.money_spent  += cost
         self.fatigue       = min(1.0, self.fatigue + fatigue_inc)
         gain               = self.strategy.score(self.profile, next_poi, self.tracker)  # pass tracker for live crowd info
+        
+        if next_poi.id in self.profile.awareness_set:
+            gain *= 0.9
+        else:
+            gain *= 1.2
+
         self.satisfaction += gain
 
         self.visited.append((next_poi, arrival))

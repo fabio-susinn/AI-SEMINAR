@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -47,6 +47,187 @@ function Section({ title, children }) {
   );
 }
 
+// ── Gauge bar ─────────────────────────────────────────────────────────────────
+
+function GaugeBar({ value, max = 1, color = GREEN, label, format }) {
+  const pct = Math.min(value / max, 1) * 100;
+  const display = format ? format(value) : value.toFixed(3);
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+        <span style={{ fontSize: 11, color: '#888780' }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color }}>{display}</span>
+      </div>
+      <div style={{ height: 6, background: '#e8e6e0', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 4, transition: 'width 0.6s ease' }} />
+      </div>
+    </div>
+  );
+}
+
+// ── Comparison row ────────────────────────────────────────────────────────────
+
+function CompareRow({ labelA, valueA, labelB, valueB, color = GREEN }) {
+  const maxV = Math.max(valueA, valueB, 0.01);
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: 11, color: '#888780', width: 160, flexShrink: 0 }}>{labelA}</span>
+        <div style={{ flex: 1, height: 8, background: '#e8e6e0', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${(valueA / maxV) * 100}%`, background: color, borderRadius: 4 }} />
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 600, color, width: 36, textAlign: 'right' }}>{valueA.toFixed(1)}</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 11, color: '#888780', width: 160, flexShrink: 0 }}>{labelB}</span>
+        <div style={{ flex: 1, height: 8, background: '#e8e6e0', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${(valueB / maxV) * 100}%`, background: ORANGE, borderRadius: 4 }} />
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 600, color: ORANGE, width: 36, textAlign: 'right' }}>{valueB.toFixed(1)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Evaluation metrics section ────────────────────────────────────────────────
+
+// ── Evaluation metrics section ────────────────────────────────────────────────
+
+function EvaluationMetrics() {
+  const [data, setData]     = useState(null);
+  const [error, setError]   = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/metrics')
+      .then(r => {
+        if (!r.ok) throw new Error(
+          r.status === 503
+            ? 'Run a simulation first to see evaluation metrics.'
+            : `Server error ${r.status}`
+        );
+        return r.json();
+      })
+      .then(d => { setData(d); setLoading(false); })
+      .catch(e => { setError(e.message); setLoading(false); });
+  }, []);
+
+  if (loading) return <p style={{ fontSize: 12, color: '#888780' }}>Loading evaluation metrics…</p>;
+  if (error)   return <p style={{ fontSize: 12, color: ORANGE }}>{error}</p>;
+  if (!data)   return null;
+
+  const {
+    total_visits,
+    spatial_gini_index,
+    overtourism_concentration_ratio,
+    local_revenue_distribution_ratio,
+    catalog_coverage_ratio,
+    intra_list_diversity_avg_tags,
+    average_tourist_satisfaction,
+    average_transit_walk_fatigue,
+    avg_pois_visited,
+    precision_interest_match_ratio,
+    fairness_metrics,
+  } = data;
+  
+  const {
+    low_budget_avg_pois,
+    high_budget_avg_pois,
+    vulnerable_group_avg_satisfaction,
+    standard_group_avg_satisfaction,
+  } = fairness_metrics;
+
+  const giniLabel = spatial_gini_index < 0.3 ? 'Good spread' : spatial_gini_index < 0.6 ? 'Moderate concentration' : 'High concentration';
+  const giniColor = spatial_gini_index < 0.3 ? GREEN : spatial_gini_index < 0.6 ? YELLOW : ORANGE;
+
+  return (
+    <div style={twoCol}>
+      {/* Quality & Management metrics */}
+      <Section title="Spatial, Revenue & Diversity Quality">
+        <GaugeBar
+          value={spatial_gini_index}
+          label={`Spatial Gini index — ${giniLabel}`}
+          color={giniColor}
+          format={v => v.toFixed(3)}
+        />
+        <GaugeBar
+          value={overtourism_concentration_ratio}
+          label="Overtourism concentration ratio"
+          color={ORANGE}
+          format={v => `${(v * 100).toFixed(1)}%`}
+        />
+        <GaugeBar
+          value={local_revenue_distribution_ratio}
+          label="Local revenue distribution ratio"
+          color={GREEN}
+          format={v => `${(v * 100).toFixed(1)}%`}
+        />
+        <GaugeBar
+          value={catalog_coverage_ratio}
+          label="Catalog coverage ratio"
+          color={BLUE}
+          format={v => `${(v * 100).toFixed(1)}%`}
+        />
+        <GaugeBar
+          value={precision_interest_match_ratio}
+          label="Interest-match precision"
+          color={PURPLE}
+          format={v => `${(v * 100).toFixed(1)}%`}
+        />
+        
+        {/* Expanded Grid Summary of Base System Evaluation */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Total Visits',      value: total_visits.toLocaleString(),               color: '#1a1a18' },
+            { label: 'Avg POIs Visited',  value: avg_pois_visited.toFixed(1),                 color: BLUE },
+            { label: 'Intra-list Div.',   value: intra_list_diversity_avg_tags.toFixed(2),    color: YELLOW },
+            { label: 'Avg Satisfaction',  value: `${(average_tourist_satisfaction * 10).toFixed(1)}/10`, color: GREEN },
+            { label: 'Transit Fatigue',   value: average_transit_walk_fatigue.toFixed(2),     color: ORANGE },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ ...cardStyle, flex: '1 1 110px', textAlign: 'center' }}>
+              <p style={{ fontSize: 10, color: '#888780', margin: 0 }}>{label}</p>
+              <p style={{ fontSize: 16, fontWeight: 600, color, margin: '4px 0 0' }}>{value}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* Fairness metrics */}
+      <Section title="Fairness metrics">
+        <p style={{ fontSize: 11, color: '#888780', margin: '0 0 10px' }}>Avg POIs visited — budget groups</p>
+        <CompareRow
+          labelA="Low budget"
+          valueA={low_budget_avg_pois}
+          labelB="High budget"
+          valueB={high_budget_avg_pois}
+          color={GREEN}
+        />
+        <p style={{ fontSize: 11, color: '#888780', margin: '14px 0 10px' }}>Avg satisfaction — vulnerability groups</p>
+        <CompareRow
+          labelA="Vulnerable (kids/seniors)"
+          valueA={vulnerable_group_avg_satisfaction}
+          labelB="Standard / solo"
+          valueB={standard_group_avg_satisfaction}
+          color={PURPLE}
+        />
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Low budget POIs',  value: low_budget_avg_pois.toFixed(1),               color: GREEN  },
+            { label: 'High budget POIs', value: high_budget_avg_pois.toFixed(1),              color: ORANGE },
+            { label: 'Vulnerable sat.',  value: vulnerable_group_avg_satisfaction.toFixed(2), color: PURPLE },
+            { label: 'Standard sat.',    value: standard_group_avg_satisfaction.toFixed(2),   color: BLUE   },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ ...cardStyle, flex: '1 1 80px', textAlign: 'center' }}>
+              <p style={{ fontSize: 10, color: '#888780', margin: 0 }}>{label}</p>
+              <p style={{ fontSize: 18, fontWeight: 600, color, margin: '4px 0 0' }}>{value}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Statistics({ simResults }) {
@@ -61,44 +242,50 @@ export default function Statistics({ simResults }) {
     ? (avg(sentiment.map(r => r.sentiment.overall_score))).toFixed(1) + '/10'
     : 'n/a';
 
-  // Top 10 POIs by visits
-  const topPois = useMemo(() =>
-    [...poi_states]
-      .filter(s => s.total_visits > 0)
-      .sort((a, b) => b.total_visits - a.total_visits)
-      .slice(0, 10)
-      .map(s => ({ name: s.poi_name.length > 22 ? s.poi_name.slice(0, 20) + '…' : s.poi_name, visits: s.total_visits, dwell: s.avg_dwell_hours }))
-  , [poi_states]);
+  // ── Visit metrics — fetched from /api/visit-metrics ──────────────────────
+  const [visitMetrics, setVisitMetrics] = useState(null);
+  const [visitMetricsError, setVisitMetricsError] = useState(null);
 
-  // Visits by neighbourhood (uses poi_states.neighbourhood injected by the backend)
+  useEffect(() => {
+    fetch('/api/visit-metrics')
+      .then(r => {
+        if (!r.ok) throw new Error(r.status === 503 ? 'Run a simulation first.' : `Server error ${r.status}`);
+        return r.json();
+      })
+      .then(d => setVisitMetrics(d))
+      .catch(e => setVisitMetricsError(e.message));
+  }, []);
+
+  const topPois = useMemo(() => {
+    if (!visitMetrics) return [];
+    return visitMetrics.top_pois.map(s => ({
+      name: s.poi_name.length > 22 ? s.poi_name.slice(0, 20) + '…' : s.poi_name,
+      visits: s.visits,
+      dwell: s.avg_dwell,
+    }));
+  }, [visitMetrics]);
+
   const byNeighbourhood = useMemo(() => {
-    const map = {};
-    poi_states.forEach(s => {
-      const nb = s.neighborhood || 'Unknown';
-      map[nb] = (map[nb] || 0) + s.total_visits;
-    });
-    return Object.entries(map)
-      .filter(([, v]) => v > 0)
-      .map(([name, visits]) => ({
-        name: name.length > 24 ? name.slice(0, 22) + '…' : name,
-        fullName: name,
-        visits,
-      }))
-      .sort((a, b) => b.visits - a.visits)
-      .slice(0, 12);
-  }, [poi_states]);
+    if (!visitMetrics) return [];
+    return visitMetrics.by_neighbourhood
+      .filter(r => r.visits > 0)
+      .slice(0, 12)
+      .map(r => ({
+        name:     r.neighbourhood.length > 24 ? r.neighbourhood.slice(0, 22) + '…' : r.neighbourhood,
+        fullName: r.neighbourhood,
+        visits:   r.visits,
+      }));
+  }, [visitMetrics]);
 
-  // Visits by category
   const byCategory = useMemo(() => {
-    const map = {};
-    poi_states.forEach(s => {
-      const cat = s.category || 'other';
-      map[cat] = (map[cat] || 0) + s.total_visits;
-    });
-    return Object.entries(map)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [poi_states]);
+    if (!visitMetrics) return [];
+    return visitMetrics.by_category.map(r => ({ name: r.category, value: r.visits }));
+  }, [visitMetrics]);
+
+  const hourDist = useMemo(() => {
+    if (!visitMetrics) return [];
+    return visitMetrics.by_hour.map(r => ({ hour: r.label, count: r.count }));
+  }, [visitMetrics]);
 
   // Sentiment distribution
   const sentimentDist = useMemo(() => {
@@ -117,19 +304,6 @@ export default function Statistics({ simResults }) {
   const scatterData = useMemo(() =>
     agents.map(a => ({ fatigue: +a.fatigue.toFixed(2), satisfaction: +a.satisfaction.toFixed(2), pois: a.pois_visited }))
   , [agents]);
-
-  // Visit hour distribution
-  const hourDist = useMemo(() => {
-    const buckets = {};
-    for (let h = 9; h <= 21; h++) buckets[h] = 0;
-    poi_states.forEach(s => {
-      (s.visit_times || []).forEach(t => {
-        const h = Math.floor(t);
-        if (h >= 9 && h <= 21) buckets[h]++;
-      });
-    });
-    return Object.entries(buckets).map(([h, count]) => ({ hour: `${h}h`, count }));
-  }, [poi_states]);
 
   // Emotional arcs
   const arcDist = useMemo(() => {
@@ -164,80 +338,88 @@ export default function Statistics({ simResults }) {
         </div>
       </Section>
 
-      {/* ── Top POIs + Neighbourhood side by side ── */}
-      <div style={twoCol}>
-        <Section title="Top 10 most visited POIs">
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={topPois} layout="vertical" margin={{ left: 8, right: 24, top: 0, bottom: 0 }}>
-              <XAxis type="number" tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 10 }} />
-              <Tooltip formatter={v => [v, 'visits']} />
-              <Bar dataKey="visits" fill={GREEN} radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Section>
+      {/* ── Top POIs, Neighbourhood, Category, Hour ── */}
+      {visitMetricsError ? (
+        <p style={{ fontSize: 12, color: ORANGE, marginBottom: 20 }}>{visitMetricsError}</p>
+      ) : !visitMetrics ? (
+        <p style={{ fontSize: 12, color: '#888780', marginBottom: 20 }}>Loading visit metrics…</p>
+      ) : (
+        <>
+          <div style={twoCol}>
+            <Section title="Top 10 most visited POIs">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={topPois} layout="vertical" margin={{ left: 8, right: 24, top: 0, bottom: 0 }}>
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={v => [v, 'visits']} />
+                  <Bar dataKey="visits" fill={GREEN} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Section>
 
-        <Section title="Visits by neighbourhood">
-          {byNeighbourhood.length === 0 ? (
-            <p style={{ fontSize: 12, color: '#888780', margin: 0 }}>
-              No neighbourhood data — make sure your POI JSON has a <code>neighbourhood</code> field.
-            </p>
-          ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={byNeighbourhood} layout="vertical" margin={{ left: 8, right: 24, top: 0, bottom: 0 }}>
-                <XAxis type="number" tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" width={155} tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v, _, props) => [v, props.payload?.fullName || 'visits']} />
-                <Bar dataKey="visits" radius={[0, 4, 4, 0]}>
-                  {byNeighbourhood.map((_, i) => (
-                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-                  ))}
-                </Bar>
+            <Section title="Visits by neighbourhood">
+              {byNeighbourhood.length === 0 ? (
+                <p style={{ fontSize: 12, color: '#888780', margin: 0 }}>
+                  No neighbourhood data — make sure your POI JSON has a <code>neighbourhood</code> field.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={byNeighbourhood} layout="vertical" margin={{ left: 8, right: 24, top: 0, bottom: 0 }}>
+                    <XAxis type="number" tick={{ fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" width={155} tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(v, _, props) => [v, props.payload?.fullName || 'visits']} />
+                    <Bar dataKey="visits" radius={[0, 4, 4, 0]}>
+                      {byNeighbourhood.map((_, i) => (
+                        <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </Section>
+          </div>
+
+          {/* ── Category + Sentiment pies ── */}
+          <div style={twoCol}>
+            <Section title="Visits by category">
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={byCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent*100).toFixed(0)}%` : ''} labelLine={false}>
+                    {byCategory.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </Section>
+
+            {sentimentDist.length > 0 && (
+              <Section title="Sentiment distribution">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={sentimentDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => percent > 0.05 ? `${(percent*100).toFixed(0)}%` : ''} labelLine={false}>
+                      {sentimentDist.map((d, i) => <Cell key={i} fill={SENTIMENT_COLORS[d.key] || PALETTE[i]} />)}
+                    </Pie>
+                    <Tooltip />
+                    <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Section>
+            )}
+          </div>
+
+          {/* ── Visit hour heatmap ── */}
+          <Section title="Visit arrivals by hour">
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={hourDist} margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
+                <XAxis dataKey="hour" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip formatter={v => [v, 'arrivals']} />
+                <Bar dataKey="count" fill={ORANGE} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          )}
-        </Section>
-      </div>
-
-      {/* ── Category + Sentiment pies ── */}
-      <div style={twoCol}>
-        <Section title="Visits by category">
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={byCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent*100).toFixed(0)}%` : ''} labelLine={false}>
-                {byCategory.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </Section>
-
-        {sentimentDist.length > 0 && (
-          <Section title="Sentiment distribution">
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={sentimentDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => percent > 0.05 ? `${(percent*100).toFixed(0)}%` : ''} labelLine={false}>
-                  {sentimentDist.map((d, i) => <Cell key={i} fill={SENTIMENT_COLORS[d.key] || PALETTE[i]} />)}
-                </Pie>
-                <Tooltip />
-                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
           </Section>
-        )}
-      </div>
-
-      {/* ── Visit hour heatmap ── */}
-      <Section title="Visit arrivals by hour">
-        <ResponsiveContainer width="100%" height={160}>
-          <BarChart data={hourDist} margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
-            <XAxis dataKey="hour" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip formatter={v => [v, 'arrivals']} />
-            <Bar dataKey="count" fill={ORANGE} radius={[3, 3, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </Section>
+        </>
+      )}
 
       {/* ── Fatigue vs Satisfaction scatter ── */}
       <Section title="Fatigue vs satisfaction (per agent)">
@@ -269,36 +451,11 @@ export default function Statistics({ simResults }) {
       )}
 
       {/* ── Agent table ── */}
-      <Section title="Agent details">
-        <div style={tableWrap}>
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                {['ID','Nationality','POIs','Spent','Fatigue','Satisfaction', sentiment ? 'Score' : null]
-                  .filter(Boolean)
-                  .map(h => <th key={h} style={th}>{h}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {agents.map((a, i) => {
-                const s = sentiment?.find(r => r.agent.agent_id === a.agent_id);
-                return (
-                  <tr key={a.agent_id} style={{ background: i % 2 === 0 ? '#fafaf9' : '#fff' }}>
-                    <td style={td}>{a.agent_id}</td>
-                    <td style={td}>{a.nationality}</td>
-                    <td style={td}>{a.pois_visited}</td>
-                    <td style={td}>€{a.money_spent.toFixed(0)}</td>
-                    <td style={td}>{a.fatigue.toFixed(2)}</td>
-                    <td style={td}>{a.satisfaction.toFixed(2)}</td>
-                    {sentiment && <td style={{ ...td, color: GREEN, fontWeight: 500 }}>{s ? s.sentiment.overall_score.toFixed(1) : '—'}</td>}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Section>
 
+      {/* ── Evaluation & fairness metrics ── */}
+      <Section title="Evaluation & fairness metrics">
+        <EvaluationMetrics />
+      </Section>
     </div>
   );
 }

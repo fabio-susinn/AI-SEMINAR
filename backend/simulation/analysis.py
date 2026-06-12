@@ -49,7 +49,7 @@ def build_agent_df(results: list[tuple[TouristAgent, TripSentiment]]) -> pd.Data
 
 def build_poi_df(results: list[tuple[TouristAgent, TripSentiment]]) -> pd.DataFrame:
     rows = []
-    for agent, s in results:
+    for agent, s in results:        
         for ps in s.poi_sentiments:
             rows.append({
                 "agent_id":    agent.agent_id,
@@ -76,101 +76,6 @@ def build_itinerary_df(results: list[tuple[TouristAgent, TripSentiment]]) -> pd.
                 "crowd":       poi.avg_crowd_level,
             })
     return pd.DataFrame(rows)
-
-
-def print_report(agent_df: pd.DataFrame, poi_df: pd.DataFrame, itin_df: pd.DataFrame):
-    sep = "─" * 52
-
-    print(f"\n{'═'*52}")
-    print("  SIMULATION REPORT")
-    print(f"{'═'*52}")
-
-    print(f"\n{sep}")
-    print("  OVERVIEW")
-    print(sep)
-    print(f"  Agents analysed      : {len(agent_df)}")
-    print(f"  Avg POIs visited     : {agent_df['pois_visited'].mean():.1f}")
-    print(f"  Avg money spent      : €{agent_df['money_spent'].mean():.2f}")
-    print(f"  Avg fatigue          : {agent_df['fatigue'].mean():.2f}/1.0")
-    print(f"  Avg LLM score        : {agent_df['overall_score'].mean():.2f}/10")
-    print(f"  Would recommend      : {agent_df['would_recommend'].mean()*100:.0f}%")
-    print(f"  Would return         : {agent_df['would_return'].mean()*100:.0f}%")
-
-    print(f"\n{sep}")
-    print("  OVERALL SENTIMENT DISTRIBUTION")
-    print(sep)
-    counts = agent_df["overall_sentiment"].value_counts()
-    for label in ["very_positive","positive","neutral","negative","very_negative"]:
-        n = counts.get(label, 0)
-        bar = "█" * int(n / len(agent_df) * 30)
-        print(f"  {label:<18} {bar:<30} {n}")
-
-    print(f"\n{sep}")
-    print("  AVG SCORE BY INTEREST TYPE")
-    print(sep)
-    by_interest = agent_df.groupby("interests")["overall_score"].mean().sort_values(ascending=False)
-    for interest, score in by_interest.items():
-        print(f"  {interest:<20} {score:.2f}/10")
-
-    print(f"\n{sep}")
-    print("  AVG SCORE BY NATIONALITY  (min 2 agents)")
-    print(sep)
-    by_nat = (
-        agent_df.groupby("nationality")
-        .filter(lambda x: len(x) >= 2)
-        .groupby("nationality")["overall_score"]
-        .mean()
-        .sort_values(ascending=False)
-    )
-    for nat, score in by_nat.items():
-        print(f"  {nat:<20} {score:.2f}/10")
-
-    print(f"\n{sep}")
-    print("  EMOTIONAL ARC DISTRIBUTION")
-    print(sep)
-    for arc, n in agent_df["emotional_arc"].value_counts().items():
-        print(f"  {arc:<35} {n}")
-
-    if not poi_df.empty:
-        print(f"\n{sep}")
-        print("  TOP 10 MOST VISITED POIs")
-        print(sep)
-        top_visited = itin_df["poi_name"].value_counts().head(10)
-        poi_scores  = poi_df.groupby("poi_name")["sentiment_n"].mean()
-        for poi, count in top_visited.items():
-            score = poi_scores.get(poi, None)
-            score_str = f"{score:.1f}/5" if score else "n/a"
-            print(f"  {poi:<38} visits={count}  sentiment={score_str}")
-
-        print(f"\n{sep}")
-        print("  TOP 10 BEST-RATED POIs  (min 2 ratings)")
-        print(sep)
-        best = (
-            poi_df.groupby("poi_name")
-            .filter(lambda x: len(x) >= 2)
-            .groupby("poi_name")["sentiment_n"]
-            .mean()
-            .sort_values(ascending=False)
-            .head(10)
-        )
-        for poi, score in best.items():
-            print(f"  {poi:<38} {score:.2f}/5")
-
-        print(f"\n{sep}")
-        print("  BOTTOM 5 POIs  (most negative reactions)")
-        print(sep)
-        worst = (
-            poi_df.groupby("poi_name")
-            .filter(lambda x: len(x) >= 2)
-            .groupby("poi_name")["sentiment_n"]
-            .mean()
-            .sort_values()
-            .head(5)
-        )
-        for poi, score in worst.items():
-            print(f"  {poi:<38} {score:.2f}/5")
-
-    print(f"\n{'═'*52}\n")
 
 
 def save_poi_states(tracker: POITracker, out_dir: str = "results"):
@@ -202,15 +107,18 @@ def save_results(
     results: list[tuple[TouristAgent, TripSentiment]],
     tracker : POITracker,
     out_dir: str = "results",
+    no_sentiment: bool = False,
 ):
     Path(out_dir).mkdir(exist_ok=True)
 
     agent_df = build_agent_df(results)
-    poi_df   = build_poi_df(results)
-    itin_df  = build_itinerary_df(results)
+    agent_df.to_csv(f"{out_dir}/agents.csv", index=False)
 
-    agent_df.to_csv(f"{out_dir}/agents.csv",      index=False)
-    poi_df.to_csv(f"{out_dir}/poi_sentiments.csv", index=False)
+    if not no_sentiment:
+        poi_df = build_poi_df(results)
+        poi_df.to_csv(f"{out_dir}/poi_sentiments.csv", index=False)
+    
+    itin_df  = build_itinerary_df(results)
     itin_df.to_csv(f"{out_dir}/itineraries.csv",   index=False)
 
     # Full JSON dump
@@ -219,7 +127,7 @@ def save_results(
         full.append({
             "agent": agent.summary(),
             "profile": agent.profile.model_dump(),
-            "sentiment": sentiment.model_dump(),
+            "sentiment": sentiment.model_dump() if not no_sentiment else None,
             "events": agent.events,
         })
     with open(f"{out_dir}/full_results.json", "w") as f:
@@ -228,6 +136,3 @@ def save_results(
     save_poi_states(tracker, out_dir)
 
     print(f"Results saved to {out_dir}/")
-    print_report(agent_df, poi_df, itin_df)
-
-    return agent_df, poi_df, itin_df

@@ -132,9 +132,18 @@ Trip data:
 
 def analyse_all(
     agents: list[TouristAgent],
-    max_workers: int = 2,   # keep low for local models — they share one GPU
+    run_sentiment: bool = True,
+    max_workers: int = 2,
 ) -> list[tuple[TouristAgent, TripSentiment]]:
+    
     eligible = [a for a in agents if a.visited]
+
+    if not run_sentiment:
+        return [
+            (agent, TripSentiment())
+            for agent in eligible
+        ]
+    
     results  = []
 
     print(f"\n── Sentiment analysis: {len(eligible)} agents (model: {OLLAMA_MODEL}) ──")

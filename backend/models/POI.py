@@ -62,22 +62,22 @@ class POISentiment(BaseModel):
     reason: str
 
 class TripSentiment(BaseModel):
-    overall_sentiment: Literal["very_positive", "positive", "neutral", "negative", "very_negative"]
-    overall_score: float = Field(ge=0.0, le=10.0)
-    summary: str
-    highlights: List[str]
-    pain_points: List[str]
-    would_recommend: bool
-    would_return: bool
-    poi_sentiments: List[POISentiment]
+    overall_sentiment: Literal["very_positive", "positive", "neutral", "negative", "very_negative"] | None = None
+    overall_score: float | None = Field(default=None, ge=0.0, le=10.0)
+    summary: str | None = None
+    highlights: List[str] | None = None
+    pain_points: List[str] | None = None
+    would_recommend: bool | None = None
+    would_return: bool | None = None
+    poi_sentiments: List[POISentiment] | None = None
     emotional_arc: Literal[
         "consistently_positive",
         "started_strong_tired_out",
         "slow_start_great_finish",
         "mixed_throughout",
         "mostly_negative"
-    ]
-    suggested_improvements: List[str]
+    ] | None = None
+    suggested_improvements: List[str] | None = None
 
 
 class POIState(BaseModel):
