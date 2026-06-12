@@ -8,6 +8,7 @@ class POI(BaseModel):
 
     lat: float
     lng: float
+    neighborhood: Optional[str] = None
     district: Optional[str] = None
     address: Optional[str] = None
 
@@ -126,6 +127,7 @@ class POIState(BaseModel):
     def to_dict(self) -> dict:
         return {
             "poi_id":            self.poi.id,
+            "neighborhood":     self.poi.neighborhood,
             "poi_name":          self.poi.name,
             "category":          self.poi.category,
             "total_visits":      self.total_visits,

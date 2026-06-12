@@ -70,6 +70,24 @@ export default function Statistics({ simResults }) {
       .map(s => ({ name: s.poi_name.length > 22 ? s.poi_name.slice(0, 20) + '…' : s.poi_name, visits: s.total_visits, dwell: s.avg_dwell_hours }))
   , [poi_states]);
 
+  // Visits by neighbourhood (uses poi_states.neighbourhood injected by the backend)
+  const byNeighbourhood = useMemo(() => {
+    const map = {};
+    poi_states.forEach(s => {
+      const nb = s.neighborhood || 'Unknown';
+      map[nb] = (map[nb] || 0) + s.total_visits;
+    });
+    return Object.entries(map)
+      .filter(([, v]) => v > 0)
+      .map(([name, visits]) => ({
+        name: name.length > 24 ? name.slice(0, 22) + '…' : name,
+        fullName: name,
+        visits,
+      }))
+      .sort((a, b) => b.visits - a.visits)
+      .slice(0, 12);
+  }, [poi_states]);
+
   // Visits by category
   const byCategory = useMemo(() => {
     const map = {};
@@ -146,17 +164,40 @@ export default function Statistics({ simResults }) {
         </div>
       </Section>
 
-      {/* ── Top POIs bar chart ── */}
-      <Section title="Top 10 most visited POIs">
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={topPois} layout="vertical" margin={{ left: 8, right: 24, top: 0, bottom: 0 }}>
-            <XAxis type="number" tick={{ fontSize: 11 }} />
-            <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 10 }} />
-            <Tooltip formatter={v => [v, 'visits']} />
-            <Bar dataKey="visits" fill={GREEN} radius={[0, 4, 4, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </Section>
+      {/* ── Top POIs + Neighbourhood side by side ── */}
+      <div style={twoCol}>
+        <Section title="Top 10 most visited POIs">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={topPois} layout="vertical" margin={{ left: 8, right: 24, top: 0, bottom: 0 }}>
+              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 10 }} />
+              <Tooltip formatter={v => [v, 'visits']} />
+              <Bar dataKey="visits" fill={GREEN} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Section>
+
+        <Section title="Visits by neighbourhood">
+          {byNeighbourhood.length === 0 ? (
+            <p style={{ fontSize: 12, color: '#888780', margin: 0 }}>
+              No neighbourhood data — make sure your POI JSON has a <code>neighbourhood</code> field.
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={byNeighbourhood} layout="vertical" margin={{ left: 8, right: 24, top: 0, bottom: 0 }}>
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={155} tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v, _, props) => [v, props.payload?.fullName || 'visits']} />
+                <Bar dataKey="visits" radius={[0, 4, 4, 0]}>
+                  {byNeighbourhood.map((_, i) => (
+                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Section>
+      </div>
 
       {/* ── Category + Sentiment pies ── */}
       <div style={twoCol}>
