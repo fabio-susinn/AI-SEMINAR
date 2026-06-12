@@ -10,7 +10,10 @@ from models import (
     SimulationRequest, SimulationResponse,
     AgentItineraryResponse,
     FairnessMetrics, EvaluationMetricsResponse,
-    VisitMetricsResponse
+    VisitMetricsResponse,
+    ScatterDataPointSent,
+    AgentDetailResponse,
+    POIVisitsScatterPoint,
 )
 
 from simulation import (
@@ -23,6 +26,7 @@ from simulation import (
 from fastapi import FastAPI, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+from typing import List
 from contextlib import asynccontextmanager
 
 GLOBAL_STATE = {
@@ -36,16 +40,20 @@ CSV_PATH         = RESULTS_DIR / "itineraries.csv"
 POI_STATES_PATH  = RESULTS_DIR / "poi_states.json"
 AGENTS_SIM = None
 POI_TRACKER = None
+SENTIMENT_TRIP = None
 
 with open(DATA_FILE) as f:
     POIS = [POI(**p) for p in json.load(f)]
 
 
-def load_simulation_data_to_cache(agent, tracker):
+def load_simulation_data_to_cache(agent, tracker, sentiment):
     """Reads the generated CSVs/JSONs into memory and optimizes for fast lookups."""
-    global AGENTS_SIM, POI_TRACKER
+    global AGENTS_SIM, POI_TRACKER, SENTIMENT_TRIP
+
     AGENTS_SIM = agent
     POI_TRACKER = tracker
+    SENTIMENT_TRIP = sentiment
+
     if not CSV_PATH.exists():
         return
 
@@ -78,7 +86,7 @@ def load_simulation_data_to_cache(agent, tracker):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Cache existing results when server boots up
-    load_simulation_data_to_cache(AGENTS_SIM, POI_TRACKER)
+    load_simulation_data_to_cache(AGENTS_SIM, POI_TRACKER, SENTIMENT_TRIP)
     yield  
 
 app = FastAPI(lifespan=lifespan)
@@ -134,7 +142,7 @@ def simulate(req: SimulationRequest):
             ]
 
         save_results(results, tracker, out_dir=str(RESULTS_DIR), no_sentiment=req.no_sentiment)
-        load_simulation_data_to_cache(agents, tracker)
+        load_simulation_data_to_cache(agents, tracker, sentiment_out)
 
         return SimulationResponse(
             agents=agent_summaries,
@@ -266,7 +274,6 @@ def get_simulation_metrics():
             return float((np.sum((2 * index - n - 1) * x)) / (n * np.sum(x)))
 
         # 1. Base Visit Metrics
-        # Assuming tracker has a method to get historical total or live aggregate crowd info per POI
         visit_counts = [POI_TRACKER.get_live_crowd(poi.id) for poi in pois]
         gini_index = calculate_gini(np.array(visit_counts))
 
@@ -347,7 +354,6 @@ def get_simulation_metrics():
         avg_sat_family = float(np.mean(family_sat)) if family_sat else 0.0
         avg_sat_solo = float(np.mean(solo_sat)) if solo_sat else 0.0
 
-        # Return organized model mapping perfectly to validation layer
         return EvaluationMetricsResponse(
             total_visits=total_visits,
             spatial_gini_index=round(gini_index, 3),
@@ -370,5 +376,140 @@ def get_simulation_metrics():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error computing live simulation metrics: {str(e)}")
     
+
+@app.get("/api/sentiment-scatter", response_model=List[ScatterDataPointSent])
+def get_sentiment_scatter():
+    global SENTIMENT_TRIP
+    
+    if not SENTIMENT_TRIP:
+        raise HTTPException(
+            status_code=503,
+            detail="Sentiment data is unavailable. Please run a simulation with sentiment enabled first."
+        )
+
+    #Mapping
+    sentiment_map = {
+        "very_positive": 5,
+        "positive": 4,
+        "neutral": 3,
+        "negative": 2,
+        "very_negative": 1
+    }
+    
+    step_stats = {}
+
+    for trip in SENTIMENT_TRIP:
+        sentiment_data = trip.get("sentiment")
+        if not sentiment_data:
+            continue
+            
+        poi_sentiments = sentiment_data.get("poi_sentiments", [])
+        if not poi_sentiments:
+            continue
+            
+        for idx, poi_sent in enumerate(poi_sentiments):
+            sent_str = poi_sent.get("sentiment")
+            score = sentiment_map.get(sent_str)
+            
+            if score is not None:
+                if idx not in step_stats:
+                    step_stats[idx] = {"sum": 0, "count": 0}
+                
+                step_stats[idx]["sum"] += score
+                step_stats[idx]["count"] += 1
+
+    results = []
+    for step_idx in sorted(step_stats.keys()):
+        stats = step_stats[step_idx]
+        if stats["count"] > 0:
+            avg = stats["sum"] / stats["count"]
+            results.append(
+                ScatterDataPointSent(
+                    step=step_idx + 1,
+                    average_sentiment=round(avg, 2)
+                )
+            )
+
+    return results
+
+@app.get("/api/agents/{agent_id}", response_model=AgentDetailResponse)
+def get_agent_details(agent_id: int):
+    global AGENTS_SIM, SENTIMENT_TRIP
+
+    if not AGENTS_SIM:
+        raise HTTPException(
+            status_code=503, 
+            detail="Simulation cache is uninitialized. Please run a simulation first."
+        )
+
+    target_agent = next((a for a in AGENTS_SIM if a.agent_id == agent_id), None)
+    
+    if not target_agent:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"No data found for Agent #{agent_id}"
+        )
+
+    profile_data = getattr(target_agent, 'profile', None)
+    if profile_data:
+        if hasattr(profile_data, 'model_dump'):
+            profile_data = profile_data.model_dump()
+        elif hasattr(profile_data, '__dict__'):
+            profile_data = profile_data.__dict__
+
+    sentiment_data = None
+    if SENTIMENT_TRIP:
+        trip_data = next((t for t in SENTIMENT_TRIP if t.get("agent", {}).get("agent_id") == agent_id), None)
+        if trip_data:
+            sentiment_data = trip_data.get("sentiment")
+
+    events = getattr(target_agent, 'action_log', []) 
+    if not events and hasattr(target_agent, 'log'):
+        events = target_agent.log
+
+    return {
+        "agent": target_agent.summary(),
+        "profile": profile_data,
+        "sentiment": sentiment_data,
+        "events": events
+    }
+
+@app.get("/api/pois/{poi_id}")
+def get_poi_by_id(poi_id: str):
+    for poi in POIS:
+        if poi.id == poi_id:
+            return poi
+    raise HTTPException(status_code=404, detail=f"Point of Interest {poi_id} not found")
+
+@app.get("/api/pois/{poi_id}/visits-scatter", response_model=List[POIVisitsScatterPoint])
+def get_poi_visits_scatter(poi_id: str):
+    df = GLOBAL_STATE.get("df")
+    
+    if df is None:
+        raise HTTPException(
+            status_code=503, 
+            detail="Itinerary data is unavailable. Please run a simulation first."
+        )
+    
+    try:
+        poi_df = df[df["poi_id"] == int(poi_id)].copy()
+        if poi_df.empty:
+            return [POIVisitsScatterPoint(hour=h, visits=0) for h in range(9, 22)]
+        
+        poi_df["hour"] = poi_df["arrival_h"].astype(int)
+        hourly_counts = poi_df["hour"].value_counts().to_dict()
+        
+        results = []
+        for h in range(9, 22):
+            results.append(POIVisitsScatterPoint(
+                hour=h,
+                visits=hourly_counts.get(h, 0)
+            ))
+            
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error computing POI scatter data: {str(e)}")
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

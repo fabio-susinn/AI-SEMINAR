@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 class SimulationRequest(BaseModel):
     agents:       int     = 10
@@ -73,3 +73,75 @@ class VisitMetricsResponse(BaseModel):
     by_neighbourhood: List[NeighbourhoodEntry]
     by_category: List[CategoryEntry]
     by_hour: List[HourEntry]
+
+class ScatterDataPointSent(BaseModel):
+    step: int
+    average_sentiment: float
+
+class AgentSummary(BaseModel):
+    agent_id: int
+    strategy: str
+    nationality: str
+    pois_visited: int
+    money_spent: float
+    fatigue: float
+    satisfaction: float
+    hours_used: float
+    itinerary: List[str]
+
+class AgentProfile(BaseModel):
+    id: str
+    awareness_set: List[str]
+    age: int
+    nationality: str
+    group_size: int
+    travel_with_kids: bool
+    travel_with_seniors: bool
+    budget_level: str
+    daily_budget_eur: float
+    mobility_mode: str
+    walking_tolerance: str
+    max_walking_distance_km: float
+    interests: List[str]
+    outdoor_preference: float
+    cultural_interest: float
+    food_interest: float
+    architecture_interest: float
+    shopping_interest: float
+    nightlife_interest: float
+    nature_interest: float
+    crowd_aversion: float
+    sustainability_sensitivity: float
+    novelty_seeking: float
+    available_hours: float
+    trip_length_days: int
+    fatigue: float
+    satisfaction: float
+    money_spent: float
+
+class POISentiment(BaseModel):
+    poi_name: str
+    sentiment: str
+    reason: str
+
+class TripSentiment(BaseModel):
+    overall_sentiment: str
+    overall_score: float
+    summary: str
+    highlights: List[str]
+    pain_points: List[str]
+    would_recommend: bool
+    would_return: bool
+    poi_sentiments: List[POISentiment]
+    emotional_arc: str
+    suggested_improvements: List[str]
+
+class AgentDetailResponse(BaseModel):
+    agent: AgentSummary
+    profile: AgentProfile
+    sentiment: Optional[TripSentiment] = None
+    events: List[str]
+
+class POIVisitsScatterPoint(BaseModel):
+    hour: int
+    visits: int
