@@ -81,11 +81,9 @@ def build_itinerary_df(results: list[tuple[TouristAgent, TripSentiment]]) -> pd.
 def save_poi_states(tracker: POITracker, out_dir: str = "results"):
     rows = [s.to_dict() for s in tracker.sorted_by_visits()]
 
-    # Save full JSON (includes visit_times array)
     with open(f"{out_dir}/poi_states.json", "w") as f:
         json.dump(rows, f, indent=2)
 
-    # Save flat CSV (drop visit_times list)
     df = pd.DataFrame([{k: v for k, v in r.items() if k != "visit_times"} for r in rows])
     df.to_csv(f"{out_dir}/poi_states.csv", index=False)
 
@@ -121,7 +119,6 @@ def save_results(
     itin_df  = build_itinerary_df(results)
     itin_df.to_csv(f"{out_dir}/itineraries.csv",   index=False)
 
-    # Full JSON dump
     full = []
     for agent, sentiment in results:
         full.append({

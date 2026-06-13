@@ -9,6 +9,10 @@ if TYPE_CHECKING:
 
 
 class ScoringStrategy(ABC):
+    def __init__(self):
+        self.max_score = -float('inf')
+        self.min_score = float('inf')
+
     @abstractmethod
     def score(self, profile: TouristProfile, poi: POI,
               tracker: "POITracker | None" = None) -> float:
@@ -16,48 +20,60 @@ class ScoringStrategy(ABC):
 
     def __call__(self, profile: TouristProfile, poi: POI,
                  tracker: "POITracker | None" = None) -> float:
-        return self.score(profile, poi, tracker)  # ← pass tracker through
+        score = self.score(profile, poi, tracker)  # ← pass tracker through
+        return score
 
 
 class PopularityBasedStrategy(ScoringStrategy):
     _max_log_reviews = 12.1
-    w_rating  = 0.50
-    w_reviews = 0.35
+    w_rating  = 5.0
+    w_reviews = 4.0
     w_crowd   = 0.15
+
+    def __init__(self):
+        super().__init__()
 
     def score(self, profile: TouristProfile, poi: POI,
               tracker: "POITracker | None" = None) -> float:
         if poi.entry_price_eur > profile.daily_budget_eur:
+            self.min_score = min(self.min_score, 0)
             return 0.0
 
         rating_norm = (poi.google_rating / 5.0) if poi.google_rating else 0.6
+        clean_review_count = max(poi.review_count, 1) if poi.review_count is not None else 1
 
-        review_norm = 0.0
-        if poi.review_count and poi.review_count > 0:
-            review_norm = min(math.log(poi.review_count + 1) / self._max_log_reviews, 1.0)
-
-        # popularity doesn't personalise — static crowd is fine here
         crowd_norm = 1.0 - poi.avg_crowd_level
 
         score = (
             self.w_rating  * rating_norm  +
-            self.w_reviews * review_norm  +
+            self.w_reviews * max(clean_review_count, 1) +
             self.w_crowd   * crowd_norm
         )
-        return round(max(0.0, score), 2)
+        score = round(max(0.0, score), 2) / (720004.7) * 10
+        self.max_score = max(self.max_score, score)
+        self.min_score = min(self.min_score, score)
+
+        return score
 
 
 class InterestsBasedStrategy(ScoringStrategy):
-    tag_boost    = 0.30
+
+    tag_boost    = 9.00
     crowd_weight = 0.40
 
+    def __init__(self):
+        super().__init__()
+
     def score(self, profile: TouristProfile, poi: POI,
-              tracker: "POITracker | None" = None) -> float:  # ← tracker in signature
+              tracker: "POITracker | None" = None) -> float:
         if poi.entry_price_eur > profile.daily_budget_eur:
+            self.min_score = min(self.min_score, 0.0)
             return 0.0
         if profile.travel_with_seniors and not poi.senior_friendly:
+            self.min_score = min(self.min_score, 0.0)
             return 0.0
         if profile.travel_with_kids and not poi.kid_friendly:
+            self.min_score = min(self.min_score, 0.0)
             return 0.0
 
         base_score = (
@@ -76,28 +92,38 @@ class InterestsBasedStrategy(ScoringStrategy):
         crowd = tracker.get_live_crowd(poi.id) if tracker else poi.avg_crowd_level
         crowd_penalty = crowd * profile.crowd_aversion * self.crowd_weight
 
-        return round(max(0.0, base_score + tag_score - crowd_penalty), 2)
+        score = round(max(0.0, base_score + tag_score - crowd_penalty), 2) / (38.12) * 10
+        self.max_score = max(self.max_score, score)
+        self.min_score = min(self.min_score, score)
+
+        return score
 
 
 class SustainabilityAwareStrategy(ScoringStrategy):
-    W_RELEVANCE      = 0.40
-    W_SUSTAINABILITY = 0.20
+
+    W_RELEVANCE      = 2.00
+    W_SUSTAINABILITY = 4.00
     W_EQUITY         = 0.25
-    W_DECROWD        = 0.25
+    W_DECROWD        = 3.0
 
     TAG_BOOST          = 0.20
     LOCAL_BASE_BONUS   = 0.50
-    OVERTOURISM_MALUS  = 0.40
+    OVERTOURISM_MALUS  = 1.0
 
-    SENIOR_FRIENDLY_BOOST    = 1.15
-    SENIOR_UNFRIENDLY_FACTOR = 0.80
-    KID_FRIENDLY_BOOST       = 1.10
-    KID_UNFRIENDLY_FACTOR    = 0.75
-    BUDGET_STRETCH_FACTOR    = 0.30
+    SENIOR_FRIENDLY_BOOST    = 1.5
+    SENIOR_UNFRIENDLY_FACTOR = 0.70
+    KID_FRIENDLY_BOOST       = 1.5
+    KID_UNFRIENDLY_FACTOR    = 0.70
+    BUDGET_STRETCH_FACTOR    = 0.70
+
+    def __init__(self):
+        super().__init__()
 
     def score(self, profile: TouristProfile, poi: POI,
-              tracker: "POITracker | None" = None) -> float:  # ← tracker in signature
+              tracker: "POITracker | None" = None) -> float:
+        
         if poi.entry_price_eur > profile.daily_budget_eur:
+            self.min_score = min(self.min_score, 0.0)
             return 0.0
 
         interest_dot = (
@@ -120,7 +146,7 @@ class SustainabilityAwareStrategy(ScoringStrategy):
         if poi.local_favourite:
             equity = self.LOCAL_BASE_BONUS * (0.5 + 0.5 * profile.novelty_seeking)
 
-        crowd = tracker.get_live_crowd(poi.id) if tracker else poi.avg_crowd_level  # ← live
+        crowd = tracker.get_live_crowd(poi.id) if tracker else poi.avg_crowd_level
         decrowd_penalty = crowd * (0.5 + 0.5 * profile.crowd_aversion)
         if poi.is_overtouristed:
             decrowd_penalty += self.OVERTOURISM_MALUS
@@ -139,4 +165,8 @@ class SustainabilityAwareStrategy(ScoringStrategy):
         if profile.budget_level == "low" and poi.entry_price_eur > 15.0:
             score *= self.BUDGET_STRETCH_FACTOR
 
-        return round(max(0.0, score), 2)
+        score = round(max(0.0, score), 2) / (14.06) * 10  
+        self.max_score = max(self.max_score, score)
+        self.min_score = min(self.min_score, score)
+
+        return score

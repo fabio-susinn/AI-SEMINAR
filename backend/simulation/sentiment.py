@@ -1,4 +1,3 @@
-"""LLM-powered post-trip sentiment analysis using local Ollama."""
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -54,14 +53,14 @@ ITINERARY
 {poi_lines}"""
 
 
-def _call_ollama(prompt: str, retries: int = 3) -> str:
+def _call_ollama(prompt: str, retries: int = 3) -> str | None:
     payload = json.dumps({
         "model":  OLLAMA_MODEL,
         "prompt": prompt,
         "stream": False,
         "format": "json",        # forces JSON output mode
         "options": {
-            "temperature": 0.3,  # lower = more consistent JSON
+            "temperature": 0.3,
             "num_predict": 1200,
         },
     }).encode("utf-8")
@@ -112,7 +111,8 @@ Trip data:
         try:
             text = _call_ollama(prompt)
 
-            # Strip accidental markdown fences
+            if text is None:
+                raise Exception("Ollama returned no response. Retrying...")
             text = text.strip()
             if text.startswith("```"):
                 text = "\n".join(text.split("\n")[1:])
@@ -146,7 +146,7 @@ def analyse_all(
     
     results  = []
 
-    print(f"\n── Sentiment analysis: {len(eligible)} agents (model: {OLLAMA_MODEL}) ──")
+    print(f"\n---Sentiment analysis: {len(eligible)} agents (model: {OLLAMA_MODEL})---")
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(analyse_trip, agent): agent for agent in eligible}
         for future in as_completed(futures):

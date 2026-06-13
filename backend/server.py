@@ -42,7 +42,7 @@ AGENTS_SIM = None
 POI_TRACKER = None
 SENTIMENT_TRIP = None
 
-with open(DATA_FILE) as f:
+with open(DATA_FILE, encoding="utf-8") as f:
     POIS = [POI(**p) for p in json.load(f)]
 
 
@@ -137,8 +137,8 @@ def simulate(req: SimulationRequest):
             
         else:
             sentiment_out = [
-                {"agent": agent.summary(), "sentiment": sentiment.model_dump()}
-                for agent, sentiment in results
+                {"agent": agent_summaries[idx], "sentiment": sentiment.model_dump()}
+                for idx, (_, sentiment) in enumerate(results)
             ]
 
         save_results(results, tracker, out_dir=str(RESULTS_DIR), no_sentiment=req.no_sentiment)
@@ -263,8 +263,7 @@ def get_simulation_metrics():
     try:
         agents = AGENTS_SIM
         pois = POIS
-
-        # Helper function for Gini calculation
+        
         def calculate_gini(x):
             if len(x) == 0 or np.sum(x) == 0:
                 return 0.0
@@ -274,7 +273,7 @@ def get_simulation_metrics():
             return float((np.sum((2 * index - n - 1) * x)) / (n * np.sum(x)))
 
         # 1. Base Visit Metrics
-        visit_counts = [POI_TRACKER.get_live_crowd(poi.id) for poi in pois]
+        visit_counts = [POI_TRACKER.get_total_visits(poi.id) for poi in pois]
         gini_index = calculate_gini(np.array(visit_counts))
 
         total_visits = sum(len(a.visited) for a in agents)
@@ -283,7 +282,6 @@ def get_simulation_metrics():
         catalog_coverage = unique_pois_visited / len(pois) if pois else 0.0
 
         # 2. Overtourism Metric
-        # Safely checks for 'is_overtouristed' attribute on POI model
         overtouristed_ids = {poi.id for poi in pois if getattr(poi, 'is_overtouristed', False)}
         overtouristed_visits = sum(1 for a in agents for p, _ in a.visited if p.id in overtouristed_ids)
         overtourism_ratio = overtouristed_visits / max(1, total_visits)
@@ -302,8 +300,7 @@ def get_simulation_metrics():
 
         low_budget_visits = []
         high_budget_visits = []
-        family_sat = []
-        solo_sat = []
+        family_visits = []
 
         for a in agents:
             summary = a.summary()
@@ -338,11 +335,11 @@ def get_simulation_metrics():
             has_seniors = getattr(a.profile, 'travel_with_seniors', False) if hasattr(a, 'profile') else False
             
             if has_kids or has_seniors:
-                family_sat.append(summary.get('satisfaction', 0.0))
+                family_visits.append(num_visited)
             else:
-                solo_sat.append(summary.get('satisfaction', 0.0))
+                family_visits.append(num_visited)
 
-        # Averages computation
+        
         avg_diversity = float(np.mean(diversity_scores)) if diversity_scores else 0.0
         avg_precision = float(np.mean(precision_scores)) if precision_scores else 0.0
         avg_satisfaction = float(np.mean(satisfaction_scores)) if satisfaction_scores else 0.0
@@ -351,8 +348,8 @@ def get_simulation_metrics():
 
         avg_pois_low = float(np.mean(low_budget_visits)) if low_budget_visits else 0.0
         avg_pois_high = float(np.mean(high_budget_visits)) if high_budget_visits else 0.0
-        avg_sat_family = float(np.mean(family_sat)) if family_sat else 0.0
-        avg_sat_solo = float(np.mean(solo_sat)) if solo_sat else 0.0
+        avg_sat_family = float(np.mean(family_visits)) if family_visits else 0.0
+        avg_sat_solo = float(np.mean(family_visits)) if family_visits else 0.0
 
         return EvaluationMetricsResponse(
             total_visits=total_visits,
@@ -368,8 +365,8 @@ def get_simulation_metrics():
             fairness_metrics=FairnessMetrics(
                 low_budget_avg_pois=round(avg_pois_low, 1),
                 high_budget_avg_pois=round(avg_pois_high, 1),
-                vulnerable_group_avg_satisfaction=round(avg_sat_family, 2),
-                standard_group_avg_satisfaction=round(avg_sat_solo, 2)
+                vulnerable_group_avg_pois=round(avg_sat_family, 2),
+                standard_group_avg_pois=round(avg_sat_solo, 2)
             )
         )
 
@@ -512,4 +509,4 @@ def get_poi_visits_scatter(poi_id: str):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8123)

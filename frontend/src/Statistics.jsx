@@ -131,8 +131,8 @@ function EvaluationMetrics() {
   const {
     low_budget_avg_pois,
     high_budget_avg_pois,
-    vulnerable_group_avg_satisfaction,
-    standard_group_avg_satisfaction,
+    vulnerable_group_avg_pois,
+    standard_group_avg_pois,
   } = fairness_metrics;
 
   const giniLabel = spatial_gini_index < 0.3 ? 'Good spread' : spatial_gini_index < 0.6 ? 'Moderate concentration' : 'High concentration';
@@ -179,7 +179,7 @@ function EvaluationMetrics() {
             { label: 'Total Visits',      value: total_visits.toLocaleString(),               color: '#1a1a18' },
             { label: 'Avg POIs Visited',  value: avg_pois_visited.toFixed(1),                 color: BLUE },
             { label: 'Intra-list Div.',   value: intra_list_diversity_avg_tags.toFixed(2),    color: YELLOW },
-            { label: 'Avg Satisfaction',  value: `${(average_tourist_satisfaction * 10).toFixed(1)}/10`, color: GREEN },
+            //{ label: 'Avg Satisfaction',  value: `${(average_tourist_satisfaction).toFixed(1)}/10`, color: GREEN },
             { label: 'Transit Fatigue',   value: average_transit_walk_fatigue.toFixed(2),     color: ORANGE },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ ...cardStyle, flex: '1 1 110px', textAlign: 'center' }}>
@@ -200,20 +200,20 @@ function EvaluationMetrics() {
           valueB={high_budget_avg_pois}
           color={GREEN}
         />
-        <p style={{ fontSize: 11, color: '#888780', margin: '14px 0 10px' }}>Avg satisfaction — vulnerability groups</p>
+        <p style={{ fontSize: 11, color: '#888780', margin: '14px 0 10px' }}>Avg POIs visited — vulnerability groups</p>
         <CompareRow
           labelA="Vulnerable (kids/seniors)"
-          valueA={vulnerable_group_avg_satisfaction}
+          valueA={vulnerable_group_avg_pois}
           labelB="Standard / solo"
-          valueB={standard_group_avg_satisfaction}
+          valueB={standard_group_avg_pois}
           color={PURPLE}
         />
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
           {[
             { label: 'Low budget POIs',  value: low_budget_avg_pois.toFixed(1),               color: GREEN  },
             { label: 'High budget POIs', value: high_budget_avg_pois.toFixed(1),              color: ORANGE },
-            { label: 'Vulnerable sat.',  value: vulnerable_group_avg_satisfaction.toFixed(2), color: PURPLE },
-            { label: 'Standard sat.',    value: standard_group_avg_satisfaction.toFixed(2),   color: BLUE   },
+            { label: 'Vulnerable sat.',  value: vulnerable_group_avg_pois.toFixed(2), color: PURPLE },
+            { label: 'Standard sat.',    value: standard_group_avg_pois.toFixed(2),   color: BLUE   },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ ...cardStyle, flex: '1 1 80px', textAlign: 'center' }}>
               <p style={{ fontSize: 10, color: '#888780', margin: 0 }}>{label}</p>
@@ -612,7 +612,7 @@ function AgentLookup() {
               <StatCard label="POIs visited"   value={agent.pois_visited} color={GREEN} />
               <StatCard label="Money spent"    value={`€${agent.money_spent.toFixed(0)}`} color={ORANGE} />
               <StatCard label="Fatigue"        value={agent.fatigue.toFixed(2)} sub="0–1 scale" />
-              <StatCard label="Satisfaction"   value={agent.satisfaction.toFixed(2)} color={BLUE} />
+              {/* <StatCard label="Satisfaction"   value={agent.satisfaction.toFixed(2)} color={BLUE} /> */}
               <StatCard label="Hours used"     value={`${agent.hours_used.toFixed(1)}h`} color={PURPLE} />
             </div>
           </div>
@@ -985,7 +985,7 @@ export default function Statistics({ simResults }) {
       )}
 
       {/* ── Fatigue vs Satisfaction scatter ── */}
-      <Section title="Fatigue vs satisfaction (per agent)">
+      {/*<Section title="Fatigue vs satisfaction (per agent)">
         <ResponsiveContainer width="100%" height={200}>
           <ScatterChart margin={{ left: 0, right: 16, top: 8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
@@ -995,7 +995,7 @@ export default function Statistics({ simResults }) {
             <Scatter data={scatterData} fill={BLUE} fillOpacity={0.6} />
           </ScatterChart>
         </ResponsiveContainer>
-      </Section>
+      </Section>*/}
 
       {/* ── Emotional arc & Sentiment Trend layout ── */}
       <div style={twoCol}>

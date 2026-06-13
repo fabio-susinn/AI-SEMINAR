@@ -15,6 +15,90 @@ NATIONALITIES = [
     "Canadian", "Chinese", "Argentinian", "Mexican", "Swedish",
 ]
 
+INTEREST_PROFILE_TAGS = {
+
+    "culture_lover": [
+        "culture", "museum", "art", "contemporary-art", "modern-art",
+        "history", "historic", "heritage", "UNESCO",
+        "Picasso", "Miró", "MNAC",
+        "gothic", "medieval", "roman", "romanesque",
+        "cathedral", "monastery", "castle",
+        "archaeological", "political", "1714",
+        "theatre", "independent-theatre", "opera",
+        "concerts", "exhibitions", "academic",
+        "historic-palaces", "library",
+        "sculpture", "sculptures",
+        "cemetery", "mausoleums"
+    ],
+
+    "foodie": [
+        "food", "seafood", "tapas",
+        "market", "fresh-food",
+        "local",
+        "Sant Antoni", "El Born"
+    ],
+
+    "architecture": [
+        "architecture", "modern-architecture",
+        "modernisme", "Gaudí", "Domènech", "Puig", "Jujol",
+        "iconic", "landmark",
+        "modern", "modern-structure",
+        "mosaic", "mosaic-roof",
+        "neoclassical", "orientalist",
+        "iron", "rooftop",
+        "first-work", "Gaudí-lamps"
+    ],
+
+    "nature_hiker": [
+        "nature", "park", "garden", "gardens",
+        "botanic", "lake", "labyrinth",
+        "roses", "peaceful", "quiet",
+        "romantic", "beach",
+        "views", "viewpoint", "panoramic",
+        "sunset", "Montjuïc",
+        "cable-car", "relaxing"
+    ],
+
+    "party_tourist": [
+        "nightlife", "concerts",
+        "rooftop", "sunset",
+        "beach", "summer",
+        "theatre", "independent-theatre"
+    ],
+
+    "shopper": [
+        "market", "antiques",
+        "flea-market", "books",
+        "fresh-food",
+        "Sant Antoni",
+        "local"
+    ],
+
+    "backpacker": [
+        "free-entry", "hidden", "hidden-gem",
+        "photography", "street-art",
+        "viewpoint", "panoramic", "sunset",
+        "local", "historic",
+        "Raval", "Gràcia", "Poblenou",
+        "Gòtic", "El Born",
+        "train-station",
+        "anti-aircraft"
+    ],
+
+    "mixed": [
+        "culture", "food", "architecture",
+        "history", "museum", "art",
+        "beach", "park", "views",
+        "local", "iconic", "landmark",
+        "modern", "historic",
+        "nightlife", "market",
+        "family", "sports",
+        "zoo", "amusement-park",
+        "1992", "olympic"
+    ]
+}
+
+
 INTEREST_SETS = [
     ("culture_lover", 0.2, 0.9, 0.3, 0.8, 0.2, 0.1, 0.2),
     ("foodie", 0.3, 0.4, 0.95, 0.3, 0.4, 0.5, 0.1),
@@ -83,7 +167,7 @@ def generate_profile(seed: int | None = None) -> TouristProfile:
         random.seed(seed)
     interests_label, outdoor, cultural, food, arch, shop, night, nature = random.choice(INTEREST_SETS)
     budget_level = random.choice(["low", "low", "medium", "medium", "medium", "high"])
-    budget_map = {"low": (40, 80), "medium": (80, 180), "high": (180, 400)}
+    budget_map = {"low": (10, 20), "medium": (20, 40), "high": (40, 100)}
     daily_budget = round(random.uniform(*budget_map[budget_level]), 2)
     mobility = random.choice(["walking", "walking", "public_transport", "public_transport", "bike", "mixed"])
     walk_tol = random.choice(["low", "medium", "medium", "high"])
@@ -106,7 +190,7 @@ def generate_profile(seed: int | None = None) -> TouristProfile:
         mobility_mode=mobility,
         walking_tolerance=walk_tol,
         max_walking_distance_km=walk_dist,
-        interests=[interests_label],
+        interests=INTEREST_PROFILE_TAGS[interests_label],
         outdoor_preference=jitter(outdoor),
         cultural_interest=jitter(cultural),
         food_interest=jitter(food),

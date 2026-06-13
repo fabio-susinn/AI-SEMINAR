@@ -33,8 +33,8 @@ class AgentItineraryResponse(BaseModel):
 class FairnessMetrics(BaseModel):
     low_budget_avg_pois: float
     high_budget_avg_pois: float
-    vulnerable_group_avg_satisfaction: float
-    standard_group_avg_satisfaction: float
+    vulnerable_group_avg_pois: float
+    standard_group_avg_pois: float
 
 class EvaluationMetricsResponse(BaseModel):
     total_visits: int

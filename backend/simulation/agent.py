@@ -9,7 +9,6 @@ from scoring import ScoringStrategy, ScoringFactory
 
 class AgentState(Enum):
     IDLE       = "idle"
-    TRAVELLING = "travelling"
     VISITING   = "visiting"
     RESTING    = "resting"
     DONE       = "done"
@@ -46,8 +45,9 @@ class TouristAgent:
         self.pois     = pois
         self.tracker  = tracker
         self.state    = AgentState.IDLE
+        self.normalized = False
 
-        # Resolve strategy — accept either an instance or a name string
+        
         if isinstance(strategy, str):
             self.strategy: ScoringStrategy = ScoringFactory.get_strategy(strategy)
             self.strategy_name: str = strategy
@@ -211,6 +211,12 @@ class TouristAgent:
 
 
     def summary(self) -> dict:
+        if not self.normalized:
+            pois_visited = len(self.visited)
+            normalized_satisfaction = self.satisfaction / (pois_visited + 1e-6)  
+            self.satisfaction = normalized_satisfaction  # Update satisfaction to normalized value
+            self.normalized = True
+
         return {
             "agent_id":      self.agent_id,
             "strategy":      self.strategy_name,   # ← new: labels output CSVs

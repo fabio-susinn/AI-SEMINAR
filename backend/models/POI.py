@@ -160,3 +160,7 @@ class POITracker(BaseModel):
     def get_live_crowd(self, poi_id: str) -> float:
         state = self.states.get(poi_id)
         return state.live_crowd_level if state else 0.0
+    
+    def get_total_visits(self, poi_id: str) -> float:
+        state = self.states.get(poi_id)
+        return state.total_visits if state else 0.0
