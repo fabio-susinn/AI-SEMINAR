@@ -76,7 +76,7 @@ python get_POIS_title.py
 ```
 These scripts will creat the raw .geojson file which later has been manually modified to include the attributes and correct latitude and longitude coordinates.
 
-However, the repository already contains the data used, there is no need to re-execute the scripts.
+However, the repository already contains the data used, there is no need to re-execute the scripts. If you still want to execute, you will need to download the dependencies by running `uv sync` in the terminal, therefore an additional prerequisite is needed: [UV Astral](https://docs.astral.sh/uv/#installation) package manager.
 
 ### 3. Start all services
 
@@ -99,7 +99,7 @@ Navigate to [http://localhost](http://localhost) in your browser.
 
 ---
 
-## ⚙️ Services
+## Services
 
 ### `backend`
 FastAPI server that exposes the simulation and scoring APIs. It communicates with Ollama at `http://ollama:11434/api/generate`.
